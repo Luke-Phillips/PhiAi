@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiAi", "PhiAi.csproj", "{418677FA-C1FB-4D0B-BDD9-B85EDB94211A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiAi", "PhiAi\PhiAi.csproj", "{418677FA-C1FB-4D0B-BDD9-B85EDB94211A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonteCarloTreeSearch", "MonteCarloTreeSearch\MonteCarloTreeSearch.csproj", "{75671168-A3F7-4599-A0CE-E8C851F9F0E3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiAi.Test", "PhiAi.Test\PhiAi.Test.csproj", "{6E4B2353-A427-462F-89E0-6D47A2E17E3B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +24,9 @@ Global
 		{75671168-A3F7-4599-A0CE-E8C851F9F0E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75671168-A3F7-4599-A0CE-E8C851F9F0E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75671168-A3F7-4599-A0CE-E8C851F9F0E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E4B2353-A427-462F-89E0-6D47A2E17E3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E4B2353-A427-462F-89E0-6D47A2E17E3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E4B2353-A427-462F-89E0-6D47A2E17E3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E4B2353-A427-462F-89E0-6D47A2E17E3B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

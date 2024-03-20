@@ -209,7 +209,3 @@ TwoInARowState state = twoInARowMcts.CurrentState;
 # Versioning
 
 PhiAI uses Semantic Versioning. Pre-1.0.0 versions will likely include breaking changes
-
-```
-
-```

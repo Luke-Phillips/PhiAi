@@ -10,6 +10,11 @@ public interface IState
     /// </summary>
     bool IsTerminal { get; set; }
     
+     /// <summary>
+     /// The agent (actor, player, user, ai, etc) that can take an action from this state
+     /// </summary>
+    string Agent { get; set; }
+    
     /// <summary>
     /// <c>Equals</c> Compares another <c>IState</c> with itself and should return true if and only if they represent the same state. 
     /// </summary>

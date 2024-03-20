@@ -4,6 +4,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <PackageId>PhiAI</PackageId>
+    <Version>1.0.0-alpha</Version>
+    <Authors>Luke Phillips</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>AI;game;monte carlo tree search;phi;PhiAI</PackageTags>
+    <PackageDescription>Add AI to your games with PhiAI</PackageDescription>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Luke-Phillips/PhiAi</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
 </Project>

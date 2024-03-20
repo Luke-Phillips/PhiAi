@@ -4,9 +4,11 @@ Implement AI for you games with PhiAI! Currently under development, PhiAI's v1 w
 
 # Algorithms
 
-## Monte Carlo Tree Search
+Currently, PhiAI offers one algorithm, the Monte Carlo Tree Search algorithm.
 
-### Overview
+## Monte Carlo Tree Search (MCTS)
+
+### MCTS Overview
 
 Monte Carlo Tree Search is an algorithm best suited for finite, two-person, zero-sum, perfect-information, sequential games. It is the algorithm between the highly successful and well-known AlphaGo and AlphaZero.
 It utilizes a game state tree. Each node in the tree represent a game state. The root node is the starting state. Edges between nodes represent an action, a transition from one state to the next.
@@ -16,7 +18,7 @@ As an example, let's use a simple game we'll call Two-in-a-Row. Two-in-a-Row fea
 
 The Monte Carlo Tree Search Algorithm will automatically search this tree, exploring paths with potential and exploiting rewarding ones.
 
-### Usage
+### MCTS Usage
 
 We will implement the Monte Carlo Tree Search Algorithm for Two-in-a-Row.
 
@@ -206,6 +208,8 @@ if (int.TryParse(Console.ReadLine(), out boxToPlayIn))
 TwoInARowState state = twoInARowMcts.CurrentState;
 ```
 
+For more examples on implementing `IDomain`, `IState`, and `IAction` please see PhiAi/examples/
+
 # Versioning
 
-PhiAI uses Semantic Versioning. Pre-1.0.0 versions will likely include breaking changes
+See CHANGELOG.md

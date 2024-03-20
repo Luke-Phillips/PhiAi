@@ -1,11 +1,14 @@
 ﻿using PhiAi.Core;
 using PhiAi.Internal.MonteCarloTreeSearch;
 using PhiAi.Util;
+using System.Timers;
 
 namespace PhiAi.MonteCarloTreeSearch;
 
-// Todo custom rollouts
-public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : IAlgorithm<TAction>
+/// <summary>
+/// Algorithm best suited for finite, two-person, zero-sum, perfect-information, sequential games 
+/// </summary>
+public class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : IAlgorithm<TAction>
     where TDomain : IDomain<TState, TAction>, new()
     where TState : IState
     where TAction : IAction
@@ -13,6 +16,9 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
     private readonly TDomain _domain;
     private readonly RolloutPolicyType _policy = RolloutPolicyType.Random;
     private readonly Random _rand;
+    private readonly string _startingAgent;
+    private readonly System.Timers.Timer _timer;
+    private bool _isTimerGoing = false;
     private double _rolloutValue;
 
     /// <summary>
@@ -24,10 +30,17 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
     /// </summary>
     private MonteCarloSearchTreeNode _currentNode;
     /// <summary>
-    /// Scout node looks ahead by exploring, exploiting, and rolling out.
+    /// Scout node looks ahead by exploring, exploiting, and performing rollouts (simulations).
     /// </summary>
     private MonteCarloSearchTreeNode _scoutNode;
 
+    /// <summary>
+    /// Access to the current state. DO NOT mutate data.
+    /// </summary>
+    public TState CurrentState
+    {
+        get => _currentNode.State;
+    }
 
     public MonteCarloTreeSearchAlgorithm()
     {
@@ -35,19 +48,28 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         _rootNode = new MonteCarloSearchTreeNode(_domain.GetInitialState());
         _currentNode = _rootNode;
         _scoutNode = _currentNode;
+        _startingAgent = _rootNode.State.Agent;
         _policy = RolloutPolicyType.Random;
         _rand = new Random((int) DateTime.Now.Ticks);
+        _timer = new System.Timers.Timer();
+        _timer.Elapsed += OnElapsed;
     }
 
-    // TODO docs may use domain if domain requires any special constructor
+    /// <summary>
+    /// Constructor if <c>TDomain</c> must be instantiated by user
+    /// </summary>
+    /// <param name="domain"></param>
     public MonteCarloTreeSearchAlgorithm(TDomain domain)
     {
         _domain = domain;
         _rootNode = new MonteCarloSearchTreeNode(_domain.GetInitialState());
         _currentNode = _rootNode;
         _scoutNode = _currentNode;
+        _startingAgent = _rootNode.State.Agent;
         _policy = RolloutPolicyType.Random;
         _rand = new Random((int) DateTime.Now.Ticks);
+        _timer = new System.Timers.Timer();
+        _timer.Elapsed += OnElapsed;
     }
 
     public MonteCarloTreeSearchAlgorithm(RolloutPolicyType policy)
@@ -56,8 +78,11 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         _rootNode = new MonteCarloSearchTreeNode(_domain.GetInitialState());
         _currentNode = _rootNode;
         _scoutNode = _currentNode;
+        _startingAgent = _rootNode.State.Agent;
         _policy = policy;
         _rand = new Random((int) DateTime.Now.Ticks);
+        _timer = new System.Timers.Timer();
+        _timer.Elapsed += OnElapsed;
     }
 
     public MonteCarloTreeSearchAlgorithm(TDomain domain, RolloutPolicyType policy)
@@ -66,10 +91,18 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         _rootNode = new MonteCarloSearchTreeNode(_domain.GetInitialState());
         _currentNode = _rootNode;
         _scoutNode = _currentNode;
+        _startingAgent = _rootNode.State.Agent;
         _policy = policy;
         _rand = new Random((int) DateTime.Now.Ticks);
+        _timer = new System.Timers.Timer();
+        _timer.Elapsed += OnElapsed;
     }
 
+    /// <summary>
+    /// Will advance current state to some next state determined by the action taken
+    /// </summary>
+    /// <param name="action">The action to take from the current state</param>
+    /// <exception cref="NoEntryActionException"></exception>
     public void TakeAction(TAction action)
     {
         EnsureChildrenExist();
@@ -77,7 +110,7 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         {
             if (node.EntryAction == null)
             {
-                throw new Exception(); // TODO custom exceptions
+                throw new NoEntryActionException("A child state of the current state is missing a reference to its entry action which is necessary to match against supplied action. Report as bug.");
             }
             return node.EntryAction.Equals(action);
         });
@@ -85,6 +118,11 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         return;
     }
 
+    /// <summary>
+    /// Gets all possible actions that can be taken from the current state
+    /// </summary>
+    /// <returns>IEnumerable of actions</returns>
+    /// <exception cref="NoEntryActionException"></exception>
     public IEnumerable<TAction> GetActions()
     {
         EnsureChildrenExist();
@@ -94,14 +132,14 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
                 {
                     if (node.EntryAction == null)
                     {
-                        throw new Exception(); // TODO custom exceptions
+                        throw new NoEntryActionException("A child state of the current state is missing a reference to its entry action which is necessary to get all possible actions. Report as bug.");
                     }
                     return node.EntryAction;
                 }
             );
     }
 
-    private void EnsureChildrenExist() // TODO rename or rethink why this needs to exist
+    private void EnsureChildrenExist()
     {
         if (_currentNode.State.IsTerminal || _domain.IsStateTerminal(_currentNode.State))
         {
@@ -109,6 +147,7 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         }
         if (_currentNode.Children.Count() == 0)
         {
+            // rollout  
             if (_currentNode.Visits == 0)
             {
                 Rollout();
@@ -120,6 +159,10 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         }
     }
 
+    /// <summary>
+    /// Searches the tree for the given amount of iterations. 
+    /// </summary>
+    /// <param name="numIterations">Number of searches to do</param>
     public void SearchForIterations(int numIterations)
     {
         for(int i = 0; i < numIterations; i++)
@@ -128,15 +171,27 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         }
     }
 
+    /// <summary>
+    /// Searches the tree until the number of milliseconds has elapsed. The current iteration will complete before returning. 
+    /// </summary>
+    /// <param name="milliseconds">Number of milliseconds to search for</param>
     public void SearchForMilliseconds(int milliseconds)
     {
-        int ellapsedTime = milliseconds; // TODO
-        while (ellapsedTime < milliseconds)
+        _isTimerGoing = true;
+        _timer.Interval = milliseconds;
+        _timer.Start();
+        while (_isTimerGoing)
         {
             Search();
         }
+        _timer.Stop();
     }
 
+    private void OnElapsed(object? source, ElapsedEventArgs e)
+    {
+        _isTimerGoing = false;
+    }
+    
     private void Search()
     {
         Select();
@@ -152,8 +207,7 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
     {
         while(_scoutNode.Children.Count() > 0)
         {
-            // TODO check to make sure ucb1 can't be 0 or less
-            double currentBestUcb1Score = 0;
+            double currentBestUcb1Score = -1;
             foreach (MonteCarloSearchTreeNode child in _scoutNode.Children)
             {
                 if (child.Visits == 0)
@@ -163,6 +217,7 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
                 }
 
                 double ucb1Score = CalculateUcb1(child);
+                
                 if (ucb1Score > currentBestUcb1Score)
                 {
                     currentBestUcb1Score = ucb1Score;
@@ -172,6 +227,7 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         }
     }
 
+    // add children to selected leaf node if leaf node has been rolled out at least once
     private void Expand()
     {
         if (_scoutNode.Visits > 0 && !(_scoutNode.State.IsTerminal || _domain.IsStateTerminal(_scoutNode.State)))
@@ -185,20 +241,36 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         }
     }
 
+    // Rollout (simulate) state and actions via a policy until a terminal state is reached and value is recorded
     private void Rollout()
     {
         TState state = _scoutNode.State;
         while (!(state.IsTerminal || _domain.IsStateTerminal(state)))
         {
-            // TODO if user doesnt implement terminal check, action[] can index OOB
             var actions = _domain.GetActionsFromState(state).ToList();
             if (_policy == RolloutPolicyType.Random)
             {
-                state = _domain.GetStateFromStateAndAction(state, actions[_rand.Next(actions.Count)]);
+                try
+                {
+                    state = _domain.GetStateFromStateAndAction(state, actions[_rand.Next(actions.Count)]);
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    // refactoring the way terminal checks work may eliminate the possibility of IOOR exceptions that occur because of users improperly implementing terminal checks
+                    break;
+                }
             }
             else if (_policy == RolloutPolicyType.Default)
             {
-                state = _domain.GetStateFromStateAndAction(state, actions[0]);
+                try
+                {
+                    state = _domain.GetStateFromStateAndAction(state, actions[0]);
+                }
+                catch
+                {
+                    // refactoring the way terminal checks work may eliminate the possibility of IOOR exceptions that occur because of users improperly implementing terminal checks
+                    break;
+                }
             }
             else
             {
@@ -208,12 +280,13 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
         _rolloutValue = _domain.GetTerminalStateValue(state);
     }
 
+    // Backpropogate terminal state value up the tree until current state is reached
     private void Backpropagate()
     {
         while (_scoutNode.Parent != null) // redundant (only root should have null parent) to get rid of null warning whilst maintaining readability
         {
             _scoutNode.Visits += 1;
-            _scoutNode.Value += _rolloutValue;
+            _scoutNode.Value += _scoutNode.Parent.State.Agent == _startingAgent ? _rolloutValue : -_rolloutValue;
             if (_scoutNode == _currentNode) break;
             _scoutNode = _scoutNode.Parent;
         }
@@ -231,9 +304,8 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
     {
         if (node.Parent == null)
         {
-            throw new NotImplementedException(); // TODO
+            throw new NotImplementedException(); 
         }
-        // TODO unhard code constant C?
         return MathUtility.CalculateUpperConfidenceBound1(
             node.GetAverageValue(),
             2,
@@ -268,6 +340,17 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
             EntryAction = entryAction;
         }
 
+        public TState State
+        {
+            get => _state;
+        }
+
+        public double Value { get; set; }
+        public int Visits { get; set; }
+        public MonteCarloSearchTreeNode? Parent { get; set; }
+        public ICollection<MonteCarloSearchTreeNode> Children { get; set; }
+        public TAction? EntryAction { get; set; }
+        
         public double GetAverageValue()
         {
             if (Visits < 1)
@@ -276,15 +359,5 @@ public partial class MonteCarloTreeSearchAlgorithm<TDomain, TState, TAction> : I
             }
             return Value / Visits;
         }
-
-        public TState State
-        {
-            get => _state;
-        }
-        public double Value { get; set; }
-        public int Visits { get; set; }
-        public MonteCarloSearchTreeNode? Parent { get; set; }
-        public ICollection<MonteCarloSearchTreeNode> Children { get; set; }
-        public TAction? EntryAction { get; set; }
     }
 }

@@ -2,10 +2,11 @@ using PhiAi.Core;
 
 namespace PhiAi.Test;
 
+// TODO - X (first player) is playing weird at 5000 iterations on move 3 (ply 5)
 public class TicTacToeState : IState
 {
     public bool IsTerminal { get; set; } = false;
-    public string Turn { get; set; } = "o";
+    public string Agent { get; set; } = "x";
     public string[][] Grid { get; set; } =
     [
         [string.Empty, string.Empty, string.Empty],
@@ -21,7 +22,7 @@ public class TicTacToeState : IState
 
     public TicTacToeState(TicTacToeState state)
     {
-        Turn = state.Turn;
+        Agent = state.Agent;
         Grid = new string[3][];
         SpacesRemaining = state.SpacesRemaining;
         for (int i = 0; i < 3; i++)
@@ -37,7 +38,7 @@ public class TicTacToeState : IState
     public bool Equals(IState state)
     {
         TicTacToeState ticTacToeState = (TicTacToeState) state;
-        if (Turn != ticTacToeState.Turn)
+        if (Agent != ticTacToeState.Agent || SpacesRemaining != ticTacToeState.SpacesRemaining || IsTerminal != ticTacToeState.IsTerminal)
         {
             return false;
         }
@@ -57,13 +58,13 @@ public class TicTacToeState : IState
 
 public class TicTacToeAction : IAction
 {
-    public string Player { get; set; }
+    public string Agent { get; set; }
     public int Row { get; set; }
     public int Column { get; set; }
 
-    public TicTacToeAction(string player, int row, int column)
+    public TicTacToeAction(string agent, int row, int column)
     {
-        Player = player;
+        Agent = agent;
         Row = row;
         Column = column;
     }
@@ -72,7 +73,7 @@ public class TicTacToeAction : IAction
     {
         TicTacToeAction ticTacToeAction = (TicTacToeAction) action;
         return (
-            Player == ticTacToeAction.Player
+            Agent == ticTacToeAction.Agent
             && Row == ticTacToeAction.Row
             && Column == ticTacToeAction.Column
         );
@@ -83,7 +84,7 @@ public class TicTacToeDomain : IDomain<TicTacToeState, TicTacToeAction>
 {
     public const string X = "x"; 
     public const string O = "o"; 
-    private readonly string _player = O;
+    private readonly string _player = X;
 
     public TicTacToeDomain() {}
     public TicTacToeDomain(string player)
@@ -99,7 +100,7 @@ public class TicTacToeDomain : IDomain<TicTacToeState, TicTacToeAction>
             {
                 if (string.IsNullOrEmpty(state.Grid[i][j]))
                 {
-                   yield return new TicTacToeAction(state.Turn, i, j);
+                   yield return new TicTacToeAction(state.Agent, i, j);
                 }
             }
         }
@@ -108,29 +109,29 @@ public class TicTacToeDomain : IDomain<TicTacToeState, TicTacToeAction>
     public TicTacToeState GetStateFromStateAndAction(TicTacToeState state, TicTacToeAction action)
     {
         var newState = new TicTacToeState(state);
-        if (newState.Turn == O)
+        if (newState.Agent == O)
         {
-            newState.Turn = X;
+            newState.Agent = X;
         }
         else
         {
-            newState.Turn = O;
+            newState.Agent = O;
         }
         newState.SpacesRemaining -= 1;
-        newState.Grid[action.Row][action.Column] = action.Player;
+        newState.Grid[action.Row][action.Column] = action.Agent;
 
         return newState;
     }
 
     public bool IsStateTerminal(TicTacToeState state)
     {
-        (bool isTerminal, double value)  = IsStateTerminalValue(state);
+        (bool isTerminal, double value)  = GetIsTerminalAndValue(state);
         return isTerminal;
     }
 
     public double GetTerminalStateValue(TicTacToeState state)
     {
-        (bool isTerminal, double value)  = IsStateTerminalValue(state);
+        (bool isTerminal, double value)  = GetIsTerminalAndValue(state);
         return value;
     }
 
@@ -139,7 +140,7 @@ public class TicTacToeDomain : IDomain<TicTacToeState, TicTacToeAction>
         return new TicTacToeState();
     }
 
-    private (bool, double) IsStateTerminalValue(TicTacToeState state)
+    private (bool, double) GetIsTerminalAndValue(TicTacToeState state)
     {
         if (
             // across
@@ -155,20 +156,23 @@ public class TicTacToeDomain : IDomain<TicTacToeState, TicTacToeAction>
             || (state.Grid[0][2] == X && state.Grid[1][1] == X && state.Grid[2][0] == X) 
         )
         {
-            return (true, _player == O ? -1 : 1);
+            return (true, 1);
         }
         else if (
+            // across
             (state.Grid[0][0] == O && state.Grid[0][1] == O && state.Grid[0][2] == O) 
-            || (state.Grid[0][2] == O && state.Grid[1][1] == O && state.Grid[2][0] == O) 
             || (state.Grid[1][0] == O && state.Grid[1][1] == O && state.Grid[1][2] == O) 
-            || (state.Grid[0][0] == O && state.Grid[1][1] == O && state.Grid[2][2] == O) 
             || (state.Grid[2][0] == O && state.Grid[2][1] == O && state.Grid[2][2] == O) 
-            || (state.Grid[0][2] == O && state.Grid[1][2] == O && state.Grid[2][2] == O) 
-            || (state.Grid[0][1] == O && state.Grid[1][1] == O && state.Grid[2][1] == O) 
+            // down
             || (state.Grid[0][0] == O && state.Grid[1][0] == O && state.Grid[2][0] == O) 
+            || (state.Grid[0][1] == O && state.Grid[1][1] == O && state.Grid[2][1] == O) 
+            || (state.Grid[0][2] == O && state.Grid[1][2] == O && state.Grid[2][2] == O) 
+            // diagonal
+            || (state.Grid[0][0] == O && state.Grid[1][1] == O && state.Grid[2][2] == O) 
+            || (state.Grid[0][2] == O && state.Grid[1][1] == O && state.Grid[2][0] == O) 
         )
         {
-            return (true, _player == O ? 1 : -1);
+            return (true, -1);
         }
         else if (state.SpacesRemaining == 0)
         {

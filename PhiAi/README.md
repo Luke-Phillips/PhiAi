@@ -14,7 +14,7 @@ Monte Carlo Tree Search is an algorithm best suited for finite, two-person, zero
 It utilizes a game state tree. Each node in the tree represent a game state. The root node is the starting state. Edges between nodes represent an action, a transition from one state to the next.
 As an example, let's use a simple game we'll call Two-in-a-Row. Two-in-a-Row features 4 boxes that start off empty. Two players take turns marking an empty box with their color (black or white). Black goes first. The first player to mark adjacent boxes wins. If neither player has adjacent boxes, the game is a draw. While a simple and incredibly boring game, it makes a good example. Here is a visualization of the game state tree.
 
-![Tic Tac Toe Game State Tree from Wikipedia](/PhiAi/docs/images/tree.png)
+![Two-in-a-Row game state tree](/PhiAi/docs/images/tree.png)
 
 The Monte Carlo Tree Search Algorithm will automatically search this tree, exploring paths with potential and exploiting rewarding ones.
 

@@ -131,7 +131,7 @@ public class ConnectFourDomain: IDomain<ConnectFourState, ConnectFourAction>
                 return newState;
             }
         }
-        throw new TestClassException("column is full");
+        throw new Exception("column is full");
     }
 
     public bool IsStateTerminal(ConnectFourState state) => GetTerminalTuple(state).Item1;
